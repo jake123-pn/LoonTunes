@@ -300,6 +300,30 @@ display:none;
 }
 
 
+/* Persistence controls */
+.persistence-controls{
+  display:flex;
+  gap:10px;
+  align-items:center;
+  justify-content:center;
+  margin-top:10px;
+}
+.persistence-controls button{
+  padding:6px 10px;
+  border-radius:12px;
+  border:none;
+  background:#ffffff22;
+  color:white;
+  font-size:13px;
+}
+.persistence-controls button.active{
+  background:rgba(255,255,255,0.12);
+  box-shadow:0 2px 6px rgba(0,0,0,0.4) inset;
+}
+#persistenceIndicator{
+  font-size:13px;
+  color:#e0e8ff;
+}
 
 
 </style>
@@ -387,7 +411,6 @@ Create Account
 
 
 
-
 <!-- REGISTER -->
 
 
@@ -468,6 +491,13 @@ Login
 <p>
 Your music world
 </p>
+
+<!-- Persistence controls + indicator -->
+<div class="persistence-controls">
+  <button id="btnSession" onclick="window.useSessionPersistence()">Session only</button>
+  <button id="btnLocal" onclick="window.useLocalPersistence()">Remember me</button>
+  <span id="persistenceIndicator">Persistence: —</span>
+</div>
 
 </header>
 
@@ -771,13 +801,24 @@ window.db = getFirestore(app);
 
 // EXPLICIT PERSISTENCE (default: local)
 // we set local persistence explicitly, and provide helpers to switch to session-only if desired
-setPersistence(window.auth, browserLocalPersistence).catch(e => console.warn('setPersistence default error', e));
+setPersistence(window.auth, browserLocalPersistence)
+  .then(() => {
+    window.persistenceMode = 'local';
+    updatePersistenceUI();
+  })
+  .catch(e => {
+    console.warn('setPersistence default error', e);
+    window.persistenceMode = 'local';
+    updatePersistenceUI();
+  });
 
 
 // helper to switch to session-only persistence (call BEFORE signing in for it to apply to that sign-in)
 window.useSessionPersistence = async function(){
   try{
     await setPersistence(window.auth, browserSessionPersistence);
+    window.persistenceMode = 'session';
+    updatePersistenceUI();
     alert('Session persistence enabled. Next sign-in will only persist for this tab.');
   }catch(e){
     alert('Could not set session persistence: ' + e.message);
@@ -788,9 +829,29 @@ window.useSessionPersistence = async function(){
 window.useLocalPersistence = async function(){
   try{
     await setPersistence(window.auth, browserLocalPersistence);
+    window.persistenceMode = 'local';
+    updatePersistenceUI();
     alert('Local persistence enabled. Sign-ins will persist across browser restarts.');
   }catch(e){
     alert('Could not set local persistence: ' + e.message);
+  }
+}
+
+// update buttons/indicator
+function updatePersistenceUI(){
+  const ind = document.getElementById('persistenceIndicator');
+  const btnS = document.getElementById('btnSession');
+  const btnL = document.getElementById('btnLocal');
+  if(!ind || !btnS || !btnL) return;
+
+  if(window.persistenceMode === 'session'){
+    ind.innerText = 'Persistence: Session-only';
+    btnS.classList.add('active');
+    btnL.classList.remove('active');
+  }else{
+    ind.innerText = 'Persistence: Local (remember me)';
+    btnL.classList.add('active');
+    btnS.classList.remove('active');
   }
 }
 
